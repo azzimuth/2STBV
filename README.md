@@ -1,2 +1,2 @@
-# 2WTBA
-2-way Telegram Bot authentication for .NET
+# 2STBV
+2-step Telegram Bot verification for .NET
