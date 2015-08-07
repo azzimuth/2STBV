@@ -26,7 +26,7 @@ namespace _2STBV.Bot.Controllers
 
         public bool VerifyVerificationCode(string userId, string code)
         {
-            var codeEquals = false;
+            var codeIsValid = false;
             using (var context = new _2STBVContext())
             {
                 var userTelegramAccount = (from account in context.UserTelegramAccounts
@@ -34,21 +34,18 @@ namespace _2STBV.Bot.Controllers
                                            select account).FirstOrDefault();
                 if (userTelegramAccount != null)
                 {
-                    codeEquals = userTelegramAccount.VerificationCode.Equals(code);
+                    codeIsValid = userTelegramAccount.VerificationCode.Equals(code) && DateTime.Now > userTelegramAccount.VerificationCodeExpiration;
 
-                    if (codeEquals)
+                    if (codeIsValid)
                     {
                         userTelegramAccount.Verified = true;
-                        userTelegramAccount.VerifiedOn = DateTime.Now;
-
                         context.Entry(userTelegramAccount).State = System.Data.Entity.EntityState.Modified;
-
                         context.SaveChanges();
                     }
                 }
             }
 
-            return codeEquals;
+            return codeIsValid;
         }
     }
 }
