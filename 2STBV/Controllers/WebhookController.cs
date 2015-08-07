@@ -33,26 +33,33 @@ namespace _2STBV.Controllers
                 _log.ErrorFormat("Intrusion attempt! Got token id {0}", token);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             }
-
+            
+            string[] textTokens = update.message.text.Split(' ');
+            
+            //return alwasy HTTP200 so that Telegram doesn't retry sending the same request again
+            if (!textTokens[0].StartsWith("/")) return new HttpResponseMessage(HttpStatusCode.OK);
+            
             var sendMessageUrl = _telegramApiUrl + "/sendMessage";
-            using (var client = new HttpClient())
-            {
-                var values = new Dictionary<string, string>();
-
-                if (RequestStorage.Storage.ContainsKey(update.message.from.id))
-                {
-                    string storedOTP;
-                    RequestStorage.Storage.TryGetValue(update.message.from.id, out storedOTP);
-
-                    string[] textTokens = update.message.text.Split(' ');
-
-                    if (!textTokens[0].Equals("/auth")) return new HttpResponseMessage(HttpStatusCode.OK);
-
-                    if (storedOTP.Equals(textTokens[1]))
-                    {
-                        values = new Dictionary<string, string>{
+            var values = new Dictionary<string, string>();
+            
+            switch(textTokens[0]){
+                case ("/start"):
+                    using (var context = new _2STBVContext(), var client = new HttpClient())
+	                {
+	                    var userTelegramAccount = (from account in context.UserTelegramAccounts
+								   where account.VerificationToken.Equals(textTokens[1])
+								   select account).FirstOrDefault();
+						if (userTelegramAccount != null)
+		                {
+		                    userTelegramAccount.VerificationCode = Guid.NewGuid().ToString("N").Substring(0,5);
+		                    userTelegramAccount.VerificationCodeExpiration = DateTime.Now.AddMinutes(10);
+		                    userTelegramAccount.TelegramUserId = update.message.from.id;
+		                    context.Entry(userTelegramAccount).State = System.Data.Entity.EntityState.Modified;
+				            context.SaveChanges();
+		                }
+		                values = new Dictionary<string, string>{
                            { "chat_id", update.message.from.id.ToString() },
-                           { "text", "Authentication successful!" },
+                           { "text", "Your verification code: " + userTelegramAccount.VerificationCode },
                            { "reply_to_message_id", update.message.message_id.ToString() }
                         };
 
@@ -61,46 +68,7 @@ namespace _2STBV.Controllers
                         var response = await client.PostAsync(sendMessageUrl, content);
 
                         var responseString = await response.Content.ReadAsStringAsync();
-
-                        try
-                        {
-                            var message = JsonConvert.DeserializeObject<Message>(responseString);
-                            RequestStorage.Storage.Remove(update.message.from.id);
-                        }
-                        catch (Exception)
-                        {
-
-                        }
-                    }
-                    else
-                    {
-                        values = new Dictionary<string, string>{
-                           { "chat_id", update.message.from.id.ToString() },
-                           { "text", "Authentication failed. Please try again." },
-                           { "reply_to_message_id", update.message.message_id.ToString() }
-                        };
-
-                        var content = new FormUrlEncodedContent(values);
-
-                        var response = await client.PostAsync(sendMessageUrl, content);
-
-                        var responseString = await response.Content.ReadAsStringAsync();
-                    }
-                }
-                else
-                {
-                    values = new Dictionary<string, string>{
-                           { "chat_id", update.message.from.id.ToString() },
-                           { "text", "Sorry but I am not expecting any messages from you." },
-                           { "reply_to_message_id", update.message.message_id.ToString() }
-                        };
-
-                    var content = new FormUrlEncodedContent(values);
-
-                    var response = await client.PostAsync(sendMessageUrl, content);
-
-                    var responseString = await response.Content.ReadAsStringAsync();
-                }
+	                }
             }
             return new HttpResponseMessage(HttpStatusCode.OK);
         }
