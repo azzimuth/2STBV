@@ -8,7 +8,7 @@ namespace _2STBV.Common.DataAccess
         [Key]
         public string UserId { get; set; }
 
-        public string TelegramUserId { get; set; }
+        public int TelegramUserId { get; set; }
 
         public string VerificationToken { get; set; }
 
@@ -16,6 +16,6 @@ namespace _2STBV.Common.DataAccess
 
         public bool Verified { get; set; }
 
-        public DateTime? VerifiedOn { get; set; }
+        public DateTime? VerificationCodeExpiration { get; set; }
     }
 }
