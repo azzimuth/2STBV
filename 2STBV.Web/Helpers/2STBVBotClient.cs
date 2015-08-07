@@ -18,13 +18,13 @@ namespace _2STBV.Web.Helpers
         {
             string token;
 
-            using(var client = new HttpClient())
+            using (var client = new HttpClient())
             {
                 var content = new FormUrlEncodedContent(new Dictionary<string, string> { { "userId", userId } });
 
                 var response = await client.PostAsync(_2STBVBotUrl + "/Verification/GetToken", content);
 
-                token = await response.Content.ReadAsStringAsync();                
+                token = await response.Content.ReadAsStringAsync();
             }
 
             return token;
@@ -48,3 +48,4 @@ namespace _2STBV.Web.Helpers
             return status;
         }
     }
+}

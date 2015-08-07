@@ -1,4 +1,5 @@
 ﻿using _2STBV.Common.Classes;
+using _2STBV.Common.DataAccess;
 using _2STBV.Util;
 using log4net;
 using Newtonsoft.Json;
@@ -10,6 +11,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Description;
+using System.Linq;
 
 namespace _2STBV.Controllers
 {
@@ -33,31 +35,33 @@ namespace _2STBV.Controllers
                 _log.ErrorFormat("Intrusion attempt! Got token id {0}", token);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             }
-            
+
             string[] textTokens = update.message.text.Split(' ');
-            
+
             //return alwasy HTTP200 so that Telegram doesn't retry sending the same request again
             if (!textTokens[0].StartsWith("/")) return new HttpResponseMessage(HttpStatusCode.OK);
-            
+
             var sendMessageUrl = _telegramApiUrl + "/sendMessage";
             var values = new Dictionary<string, string>();
-            
-            switch(textTokens[0]){
-                case ("/start"):
-                    using (var context = new _2STBVContext(), var client = new HttpClient())
-	                {
-	                    var userTelegramAccount = (from account in context.UserTelegramAccounts
-								   where account.VerificationToken.Equals(textTokens[1])
-								   select account).FirstOrDefault();
-						if (userTelegramAccount != null)
-		                {
-		                    userTelegramAccount.VerificationCode = Guid.NewGuid().ToString("N").Substring(0,5);
-		                    userTelegramAccount.VerificationCodeExpiration = DateTime.Now.AddMinutes(10);
-		                    userTelegramAccount.TelegramUserId = update.message.from.id;
-		                    context.Entry(userTelegramAccount).State = System.Data.Entity.EntityState.Modified;
-				            context.SaveChanges();
-		                }
-		                values = new Dictionary<string, string>{
+
+            switch (textTokens[0])
+            {
+                case "/start":
+                    using (var client = new HttpClient())
+                    using (var context = new _2STBVContext())
+                    {
+                        var userTelegramAccount = (from account in context.UserTelegramAccounts
+                                                   where account.VerificationToken.Equals(textTokens[1])
+                                                   select account).FirstOrDefault();
+                        if (userTelegramAccount != null)
+                        {
+                            userTelegramAccount.VerificationCode = Guid.NewGuid().ToString("N").Substring(0, 5);
+                            userTelegramAccount.VerificationCodeExpiration = DateTime.Now.AddMinutes(10);
+                            userTelegramAccount.TelegramUserId = update.message.from.id;
+                            context.Entry(userTelegramAccount).State = System.Data.Entity.EntityState.Modified;
+                            context.SaveChanges();
+                        }
+                        values = new Dictionary<string, string>{
                            { "chat_id", update.message.from.id.ToString() },
                            { "text", "Your verification code: " + userTelegramAccount.VerificationCode },
                            { "reply_to_message_id", update.message.message_id.ToString() }
@@ -68,7 +72,8 @@ namespace _2STBV.Controllers
                         var response = await client.PostAsync(sendMessageUrl, content);
 
                         var responseString = await response.Content.ReadAsStringAsync();
-	                }
+                    }
+                    break;
             }
             return new HttpResponseMessage(HttpStatusCode.OK);
         }
