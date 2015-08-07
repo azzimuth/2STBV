@@ -5,17 +5,16 @@ using System.Linq;
 
 namespace _2STBV.Bot.Controllers
 {
-    public class VerifyController : ApiController
+    public class VerificationController : ApiController
     {
         // /Verification/GetToken
         public string GetToken(string userId)
         {
             var token = Guid.NewGuid().ToString("N");
-            var code = Guid.NewGuid().ToString("N").Substring(0, 5);
-
+            //var code = Guid.NewGuid().ToString("N").Substring(0, 5);
             using (var context = new _2STBVContext())
             {
-                var userTelegramAccount = new UserTelegramAccount { UserId = userId, VerificationToken = token, VerificationCode = code, Verified = false };
+                var userTelegramAccount = new UserTelegramAccount { UserId = userId, VerificationToken = token, Verified = false };
 
                 context.UserTelegramAccounts.Add(userTelegramAccount);
 
